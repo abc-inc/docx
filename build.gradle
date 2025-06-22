@@ -1,0 +1,150 @@
+plugins {
+  id 'com.gradleup.shadow' version '8.3.6' apply false
+  id 'org.graalvm.buildtools.native' version '0.10.6' apply false
+}
+
+allprojects {
+  group = 'com.github.abc-inc'
+  version = '0.1.0'
+}
+
+subprojects {
+  apply plugin: 'java'
+
+  sourceCompatibility = '21'
+
+  repositories {
+    maven { url 'https://artifacts.rbi.tech/artifactory/public' }
+    mavenCentral()
+  }
+}
+
+project(':docx-cli') {
+  apply plugin: 'application'
+  apply plugin: 'java'
+  apply plugin: 'maven-publish'
+
+  apply plugin: 'com.gradleup.shadow'
+  apply plugin: 'org.graalvm.buildtools.native'
+
+  mainClassName = 'com.github.abcinc.docx.Docx'
+
+  dependencies {
+    implementation project(':docx-docx4j')
+    implementation project(':docx-poi')
+
+    implementation 'ch.qos.logback:logback-classic:1.5.18'
+    implementation 'commons-io:commons-io:2.19.0'
+    implementation 'info.picocli:picocli:4.7.7'
+    implementation 'org.slf4j:slf4j-api:2.0.17'
+
+    annotationProcessor 'info.picocli:picocli-codegen:4.7.7'
+  }
+
+  compileJava {
+    options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
+  }
+
+  graalvmNative {
+    testSupport = false
+
+    binaries {
+      main {
+        imageName = 'docx'
+        quickBuild = false
+        richOutput = true
+
+        buildArgs.add('-H:+AddAllCharsets')
+      }
+
+      configureEach {
+        resources.autodetect()
+      }
+    }
+
+    agent {
+      enabled = true
+      // builtinCallerFilter = true
+      // builtinHeuristicFilter = true
+      // trackReflectionMetadata = true
+
+      metadataCopy {
+        inputTaskNames.add('run')
+        outputDirectories.add('src/main/resources/META-INF/native-image')
+        mergeWithExisting = true
+      }
+    }
+  }
+
+  publishing {
+    repositories {
+      maven {
+        name = 'GitHubPackages'
+        url = 'https://maven.pkg.github.com/abc-inc/docx'
+        credentials {
+          username = System.getenv('ARTIFACT_REPOSITORY_USERNAME')
+          password = System.getenv('ARTIFACT_REPOSITORY_PASSWORD')
+        }
+      }
+    }
+
+    publications {
+      gpr(MavenPublication) {
+        artifact shadowJar
+
+        pom {
+          name = 'docx'
+          description = 'A command-line tool for processing Microsoft Word documents in the DOCX format.'
+          url = 'https://github.com/abc-inc/docx'
+          licenses {
+            license {
+              name = 'The Apache License, Version 2.0'
+              url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+project(':docx-core') {
+  apply plugin: 'java-library'
+
+  dependencies {
+    api 'com.google.guava:guava:33.4.8-jre'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+  }
+
+  test {
+    useJUnitPlatform()
+  }
+}
+
+project(':docx-docx4j') {
+  apply plugin: 'java-library'
+
+  dependencies {
+    api project(':docx-core')
+
+    implementation 'org.docx4j:docx4j-export-fo:11.5.2'
+    implementation 'org.docx4j:docx4j-JAXB-ReferenceImpl:11.5.2'
+    // implementation 'org.docx4j:docx4j-JAXB-MOXy:11.5.2' // alternative JAXB
+
+    // runtimeOnly 'xerces:xercesImpl:2.12.2' // for docx4j-core (XmlUtils)
+  }
+}
+
+project(':docx-poi') {
+  apply plugin: 'java-library'
+
+  dependencies {
+    api project(':docx-core')
+
+    implementation 'fr.opensagres.xdocreport:fr.opensagres.poi.xwpf.converter.pdf:2.1.0'
+    implementation 'fr.opensagres.xdocreport:fr.opensagres.xdocreport.document.docx:2.1.0'
+    implementation 'org.apache.logging.log4j:log4j-to-slf4j:2.25.0'
+  }
+}

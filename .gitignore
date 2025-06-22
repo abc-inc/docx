@@ -1,0 +1,15 @@
+### Gradle
+/.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+### IntelliJ IDEA
+/.idea/
+*.iml
+out/
+
+### Project
+*.docx
+*.pdf
+!/testdata/
+/docx-cli/src/main/resources/META-INF/native-image/

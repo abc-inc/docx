@@ -1,0 +1,13 @@
+pluginManagement {
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+rootProject.name = 'docx'
+
+include 'docx-cli'
+include 'docx-core'
+include 'docx-docx4j'
+include 'docx-poi'
